@@ -2,6 +2,8 @@
 
 A web application to manage projects, tasks and related resources
 
+## Folders structure
+
 ```text
 docker-project-manager/
 ├── README.md
@@ -9,7 +11,7 @@ docker-project-manager/
 ├── Dockerfile
 ├── .gitignore
 ├── .dockerignore
-├── backend/                    # Java 21, Spring Boot 3.2+, Gradle
+├── backend/                    # Java 21, SpringBoot 4, Gradle 9, Postgre 18, Hibernate 7, Flyway 12
 ├── frontend/                   # Angular 22 (signals, zoneless, standalone)
 └── e2e/                        # Tests E2E Playwright
 ```
