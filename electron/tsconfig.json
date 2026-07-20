@@ -1,0 +1,20 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "outDir": "../dist-electron",
+    "rootDir": "../electron",
+    "sourceMap": true,
+    "declaration": false,
+    "removeComments": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "types": ["node"]
+  },
+  "include": ["../electron/**/*.ts"],
+  "exclude": ["../src", "../node_modules", "../dist", "../out-tsc"]
+}

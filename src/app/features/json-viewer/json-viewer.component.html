@@ -1,0 +1,52 @@
+<section class="viewer" [class.viewer--loading]="isLoading()">
+  @if (!isElectron()) {
+    <div class="viewer__banner">
+      Running in web mode. File access is only available inside the Electron desktop shell — start
+      the app with <code>npm run dev</code>.
+    </div>
+  }
+
+  <div class="viewer__toolbar">
+    <button type="button" class="btn btn--primary" (click)="openFile()" [disabled]="isLoading()">
+      Open JSON…
+    </button>
+
+    @if (hasDocument()) {
+      <button type="button" class="btn" (click)="copyToClipboard()">Copy</button>
+      <button type="button" class="btn btn--ghost" (click)="clear()">Clear</button>
+    }
+  </div>
+
+  @if (isLoading()) {
+    <div class="viewer__state">Loading…</div>
+  }
+
+  @if (error(); as err) {
+    <div class="viewer__error" role="alert">
+      <strong>Could not read file.</strong>
+      <span>{{ err.message }}</span>
+      @if (err.filePath) {
+        <code>{{ err.filePath }}</code>
+      }
+    </div>
+  }
+
+  @if (document(); as doc) {
+    <div class="viewer__meta">
+      <span class="viewer__path" [title]="doc.filePath">{{ doc.filePath }}</span>
+      <span class="viewer__size">{{ formatBytes(doc.sizeBytes) }}</span>
+      <span class="viewer__time">{{ formatTime(doc.loadedAt) }}</span>
+    </div>
+
+    <pre class="viewer__content"><code>{{ doc.content }}</code></pre>
+  }
+
+  @if (status() === 'idle' && !hasDocument() && !hasError()) {
+    <div class="viewer__empty">
+      <p>No file loaded.</p>
+      <p class="viewer__hint">
+        Use <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>O</kbd> or the button above.
+      </p>
+    </div>
+  }
+</section>

@@ -1,0 +1,33 @@
+{
+  "appId": "com.example.dockerprojectmanager",
+  "productName": "Docker Project Manager",
+  "directories": {
+    "output": "release",
+    "buildResources": "build"
+  },
+  "files": [
+    "dist/docker-project-manager/browser/**/*",
+    "dist-electron/**/*",
+    "package.json"
+  ],
+  "extraMetadata": {
+    "main": "dist-electron/main.js"
+  },
+  "mac": {
+    "category": "public.app-category.developer-tools",
+    "target": ["dmg", "zip"]
+  },
+  "win": {
+    "target": ["nsis"],
+    "artifactName": "${productName}-${version}-${arch}.${ext}"
+  },
+  "linux": {
+    "target": ["AppImage", "deb"],
+    "category": "Development"
+  },
+  "publish": {
+    "provider": "github",
+    "owner": "your-org",
+    "repo": "docker-project-manager"
+  }
+}

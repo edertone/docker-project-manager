@@ -1,0 +1,66 @@
+{
+  "name": "docker-project-manager",
+  "version": "0.1.0",
+  "description": "Electron + Angular desktop app that reads JSON files from disk and displays them as plain text.",
+  "author": {
+    "name": "Docker Project Manager",
+    "email": "info@example.com"
+  },
+  "license": "MIT",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "start:electron": "npm run build:electron && electron .",
+    "build": "ng build",
+    "build:prod": "ng build --configuration production",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "watch:electron": "tsc -p electron/tsconfig.json --watch",
+    "test": "ng test",
+    "lint": "ng lint",
+    "format": "prettier --write \"src/**/*.{ts,html,scss,json}\" \"electron/**/*.ts\"",
+    "dev": "concurrently -k -n ANGULAR,ELECTRON -c green,cyan \"ng serve\" \"npm run watch:electron\" \"wait-on http://localhost:4200 && cross-env ELECTRON_IS_DEV=1 electron .\"",
+    "electron:dev": "npm run dev",
+    "electron:build": "npm run build:prod && npm run build:electron && electron-builder",
+    "electron:build:win": "npm run build:prod && npm run build:electron && electron-builder --win",
+    "electron:build:mac": "npm run build:prod && npm run build:electron && electron-builder --mac",
+    "electron:build:linux": "npm run build:prod && npm run build:electron && electron-builder --linux",
+    "publish": "npm run electron:build -- --publish always"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/common": "^22.0.0",
+    "@angular/compiler": "^22.0.0",
+    "@angular/core": "^22.0.0",
+    "@angular/forms": "^22.0.0",
+    "@angular/platform-browser": "^22.0.0",
+    "@angular/router": "^22.0.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.6.0",
+    "zone.js": "~0.15.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.0.0",
+    "@angular/cli": "^22.0.0",
+    "@angular/compiler-cli": "^22.0.0",
+    "@types/jasmine": "~5.1.0",
+    "@types/node": "^22.0.0",
+    "concurrently": "^9.0.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "jasmine-core": "~5.4.0",
+    "karma": "~6.4.0",
+    "karma-chrome-launcher": "~3.2.0",
+    "karma-coverage": "~2.2.0",
+    "karma-jasmine": "~5.1.0",
+    "karma-jasmine-html-reporter": "~2.1.0",
+    "prettier": "^3.3.0",
+    "ts-node": "^10.9.0",
+    "typescript": "~6.0.0",
+    "wait-on": "^8.0.0"
+  },
+  "engines": {
+    "node": "^22.22.3 || ^24.15.0 || >=26.0.0"
+  }
+}

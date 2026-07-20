@@ -1,0 +1,146 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1.5rem;
+  gap: 1rem;
+
+  &--loading {
+    opacity: 0.7;
+  }
+}
+
+.viewer__banner {
+  padding: 0.75rem 1rem;
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  color: var(--app-muted);
+  font-size: 0.85rem;
+
+  code {
+    background: var(--app-bg);
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+  }
+}
+
+.viewer__toolbar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text);
+  border-radius: 6px;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--app-surface-2);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &--primary {
+    background: var(--app-accent);
+    border-color: var(--app-accent);
+    color: #fff;
+
+    &:hover:not(:disabled) {
+      background: var(--app-accent-hover);
+      border-color: var(--app-accent-hover);
+    }
+  }
+
+  &--ghost {
+    background: transparent;
+  }
+}
+
+.viewer__state,
+.viewer__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  color: var(--app-muted);
+  text-align: center;
+}
+
+.viewer__hint {
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+kbd {
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
+  border-radius: 3px;
+  padding: 0.05rem 0.35rem;
+  font-family: var(--app-mono);
+  font-size: 0.75rem;
+}
+
+.viewer__error {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  background: rgba(244, 135, 113, 0.1);
+  border: 1px solid var(--app-error);
+  border-radius: 6px;
+  color: var(--app-error);
+
+  code {
+    font-family: var(--app-mono);
+    font-size: 0.8rem;
+    word-break: break-all;
+  }
+}
+
+.viewer__meta {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--app-muted);
+  flex-wrap: wrap;
+}
+
+.viewer__path {
+  font-family: var(--app-mono);
+  word-break: break-all;
+}
+
+.viewer__content {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 1rem;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  overflow: auto;
+  font-family: var(--app-mono);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  white-space: pre;
+
+  code {
+    font-family: inherit;
+  }
+}

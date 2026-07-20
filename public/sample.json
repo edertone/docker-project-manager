@@ -1,0 +1,13 @@
+{
+  "app": "Docker Project Manager",
+  "version": "0.1.0",
+  "description": "Sample JSON file used to verify the viewer end-to-end.",
+  "containers": [
+    { "name": "api", "image": "node:22-alpine", "ports": ["3000:3000"] },
+    { "name": "db", "image": "postgres:16", "ports": ["5432:5432"] }
+  ],
+  "metadata": {
+    "created": "2026-07-20T00:00:00Z",
+    "tags": ["sample", "demo"]
+  }
+}
