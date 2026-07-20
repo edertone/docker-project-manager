@@ -2,13 +2,11 @@
 
 A web application to manage projects, tasks and related resources.
 
-## Index
+## Functional specifications
 
-- [Folders structure](#folders-structure)
-- [Backend architecture](#backend-architecture)
-- [REST API Specification](#rest-api-specification)
+See [`docs/functional-specifications.md`](docs/functional-specifications.md) for the full functional requirements specification.
 
-## Folders structure
+## Folder structure
 
 ```text
 docker-project-manager/
@@ -22,10 +20,18 @@ docker-project-manager/
 └── e2e/                        # Tests E2E Playwright
 ```
 
+## Docker container architecture
+
+TODO
+
+## REST API specification
+
+See [`docs/api-specification.md`](docs/api-specification.md) for endpoint definitions, request/response schemas and enumerations.
+
 ## Backend architecture
 
 See [`docs/backend-architecture.md`](docs/backend-architecture.md) for the full architecture, conventions and storage details.
 
-## REST API Specification
+## Frontend architecture
 
-See [`docs/api-specification.md`](docs/api-specification.md) for endpoint definitions (tables), request/response schemas and enumerations.
+TODO

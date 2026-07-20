@@ -4,21 +4,6 @@ This document describes the architecture, design principles, conventions and sto
 
 ---
 
-## Features
-
-The application is intended for a **single user** working on one project at a time. No multiple users and no concurrency are expected, but the backend keeps a **server-side project registry** so that projects survive across sessions and can be reopened later by the frontend. It is designed around the following core feature set:
-
-- **Projects** — JSON documents with metadata, calendars and view configuration, persisted server-side and addressable by UUID.
-- **Tasks** — hierarchical WBS (outline numbers), milestones, project tasks, priorities, colors, notes, web links, costs, third-date constraints, completion %, critical path.
-- **Task dependencies** — FS / FF / SS / SF constraints, lag (difference), hardness (strong / rubber).
-- **Resources** — human resources with roles, days off, standard rate / cost.
-- **Resource assignments** — load per assignment, coordinator flag, role-in-task.
-- **Calendars** — project calendar, resource calendars, exceptions (holidays), working day definitions.
-- **Costs** — manual or calculated task costs aggregated from assignments.
-- **Roles** — configurable role lists used by resources and assignments.
-- **Import / Export** — native JSON, CSV (tasks / resources / assignments), Excel, PDF, PNG, HTML reports.
-- **Views / UI state** — visible columns, column order/width, chart zoom, filters, sorting, expanded tasks.
-
 ## Stateful backend
 
 The API is **stateful**: the backend persists project data in a server-side database (see [Section 3. Storage technology](#storage-technology)). Projects are stored, maintained and retrieved through the backend, so the frontend doesn't need to keep local copies or send the full project state in every request. Instead, every operation targets a project by its `{projectId}` path parameter, which the backend resolves against its store.
