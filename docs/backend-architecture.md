@@ -25,7 +25,7 @@ The backend also maintains a **per-project undo/redo history**. Every mutating o
 The API is designed around the following core feature set:
 
 - **Projects** — JSON documents with metadata, calendars and view configuration, persisted server-side and addressable by ID.
-- **Tasks** — hierarchical WBS (outline numbers), milestones, project tasks, priorities, colors, notes, attachments, web links, costs, custom columns, third-date constraints, completion %, critical path.
+- **Tasks** — hierarchical WBS (outline numbers), milestones, project tasks, priorities, colors, notes, web links, costs, custom columns, third-date constraints, completion %, critical path.
 - **Task dependencies** — FS / FF / SS / SF constraints, lag (difference), hardness (strong / rubber).
 - **Resources** — human resources with roles, days off, custom columns, standard rate / cost.
 - **Resource assignments** — load per assignment, coordinator flag, role-in-task.
@@ -71,7 +71,7 @@ The API is **public**: no authentication is required for any endpoint. Any clien
 ### Identifiers
 
 - All identifiers are strings (stable UIDs are used for tasks/resources). `{projectId}` is a stable server-side identifier assigned at project creation.
-- **Path parameters** (`{projectId}`, `{taskId}`, `{resourceId}`, `{dependencyId}`, `{viewId}`, `{attachmentId}`, …) are **server-side identifiers**. `{projectId}` selects the persisted project in the backend store; `{taskId}`, `{resourceId}`, etc. identify entities **within that stored project** and are resolved by the backend against the loaded project.
+- **Path parameters** (`{projectId}`, `{taskId}`, `{resourceId}`, `{dependencyId}`, `{viewId}`, …) are **server-side identifiers**. `{projectId}` selects the persisted project in the backend store; `{taskId}`, `{resourceId}`, etc. identify entities **within that stored project** and are resolved by the backend against the loaded project.
 
 ### Dates
 
@@ -106,7 +106,3 @@ The backend is the single source of truth for persisted project state:
 - All other operations load the referenced project from PostgreSQL by `{projectId}`, apply the change, and persist the updated document back to the database.
 - Every mutating operation also pushes the **previous** project state onto the project's undo stack (capped to a configurable maximum), enabling the dedicated `:undo`, `:redo` and `/history` endpoints (see Section 13 of the [API spec](api-specification.md)).
 - The undo/redo stacks are persisted alongside the project in the backend store, so they survive server restarts. Deleting a project also deletes its history.
-
-### Attachments
-
-Attachments are stored as **references** (local file paths or URLs) inside the project JSON. The backend persists the references as part of the project document but **never holds attachment bytes**; attachment endpoints only update the references in the stored project.

@@ -47,7 +47,7 @@ Builds, persists, retrieves and inspects project JSON documents. Projects are st
 
 ## 2. Tasks
 
-Manages the task tree (WBS). Tasks support nesting (supertask / subtasks), milestones, project tasks, priorities, colors, notes, attachments, web links, costs, third-date constraints, completion %, custom columns and critical path flag. All endpoints target a persisted project by `{projectId}` and return the updated project state loaded from storage.
+Manages the task tree (WBS). Tasks support nesting (supertask / subtasks), milestones, project tasks, priorities, colors, notes, web links, costs, third-date constraints, completion %, custom columns and critical path flag. All endpoints target a persisted project by `{projectId}` and return the updated project state loaded from storage.
 
 | Method | Endpoint | Body | Returns | Functional description |
 |---|---|---|---|---|
@@ -61,9 +61,6 @@ Manages the task tree (WBS). Tasks support nesting (supertask / subtasks), miles
 | POST | `/projects/{projectId}/tasks/{taskId}:shift` | `{ "deltaDays": int }` | `Project` (200) | Shifts the task start/end by a number of days, respecting calendar. Returns the updated project. |
 | POST | `/projects/{projectId}/tasks/{taskId}:activities` | — | `TaskActivity[]` | Returns the list of working activities (slices) computed from the calendar. |
 | POST | `/projects/{projectId}/tasks/{taskId}:critical-path` | — | `Task[]` | Returns the chain of tasks on the critical path that contains this task. |
-| POST | `/projects/{projectId}/tasks/{taskId}/attachments:list` | — | `Attachment[]` | Lists documents attached to the task. |
-| POST | `/projects/{projectId}/tasks/{taskId}/attachments:add` | `{ "attachment": AttachmentCreate }` | `Project` (200) | Adds an attachment reference (local file path or URL) to the task. The backend stores no bytes; it only updates the reference in the stored project. |
-| POST | `/projects/{projectId}/tasks/{taskId}/attachments/{attachmentId}:remove` | — | `Project` (200) | Removes an attachment reference. Returns the updated project. |
 | POST | `/projects/{projectId}/tasks/{taskId}/notes:get` | — | `{ "notes": "string" }` | Returns the rich-text notes of the task. |
 | POST | `/projects/{projectId}/tasks/{taskId}/notes:set` | `{ "notes": string }` | `Project` (200) | Updates the task notes. Returns the updated project. |
 | POST | `/projects/{projectId}/tasks/{taskId}/cost:get` | — | `Cost` | Returns the task cost (manual or calculated from assignments). |
@@ -95,25 +92,12 @@ Manages the task tree (WBS). Tasks support nesting (supertask / subtasks), miles
   "coordinator": "string|null",
   "resources": ["string"],
   "predecessors": ["string"],
-  "notes": "string",
-  "attachments": ["Attachment"]
+  "notes": "string"
 }
 ```
 
 `priority` enum: `LOW`, `NORMAL`, `HIGH`, `HIGHEST`.
 `durationUnit` enum: `DAY`, `HOUR`, `WEEK`, `MONTH`, `MINUTE`.
-
-### `Attachment` schema
-```json
-{
-  "id": "string",
-  "name": "string",
-  "path": "string",
-  "url": "string|null",
-  "displayName": "string"
-}
-```
-An attachment is a **reference** (a local file `path` or a remote `url`) stored inside the project JSON. The backend never holds attachment bytes.
 
 ---
 
