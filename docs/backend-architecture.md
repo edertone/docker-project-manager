@@ -4,25 +4,9 @@ This document describes the architecture, design principles, conventions and sto
 
 ---
 
-## 1. Architecture
+## Features
 
-### Stateful backend
-
-The API is **stateful**: the backend persists project data in a server-side database (see [Section 3. Storage technology](#3-storage-technology)). Projects are stored, maintained and retrieved through the backend, so the frontend doesn't need to keep local copies or send the full project state in every request. Instead, every operation targets a project by its `{projectId}` path parameter, which the backend resolves against its store.
-
-The backend is the single source of truth for persisted project state: the frontend loads a project from the backend, edits it through the API, and relies on the backend to persist every change. Mutating endpoints return the **updated project JSON** (wrapped in the `{ "project": ... }` envelope) loaded from storage after the change, so the client can refresh its in-memory copy.
-
-### Single-user application
-
-The application is intended for a **single user** working on one project at a time. No multiple users and no concurrency are expected, but the backend keeps a **server-side project registry** so that projects survive across sessions and can be reopened later by the frontend.
-
-### Undo / redo history
-
-The backend also maintains a **per-project undo/redo history**. Every mutating operation pushes the previous project state onto an undo stack, so the frontend can undo and redo changes through dedicated endpoints without keeping any snapshots client-side. The history is scoped to each project and capped to a configurable maximum number of entries. The undo/redo stacks are persisted alongside the project in the backend store, so they survive server restarts; deleting a project also deletes its history. See Section 12 of the [API spec](api-specification.md) for the dedicated endpoints.
-
-### Core feature set
-
-The API is designed around the following core feature set:
+The application is intended for a **single user** working on one project at a time. No multiple users and no concurrency are expected, but the backend keeps a **server-side project registry** so that projects survive across sessions and can be reopened later by the frontend. It is designed around the following core feature set:
 
 - **Projects** — JSON documents with metadata, calendars and view configuration, persisted server-side and addressable by UUID.
 - **Tasks** — hierarchical WBS (outline numbers), milestones, project tasks, priorities, colors, notes, web links, costs, third-date constraints, completion %, critical path.
@@ -35,13 +19,23 @@ The API is designed around the following core feature set:
 - **Import / Export** — native JSON, CSV (tasks / resources / assignments), Excel, PDF, PNG, HTML reports.
 - **Views / UI state** — visible columns, column order/width, chart zoom, filters, sorting, expanded tasks.
 
-### Exhaustiveness
+## Stateful backend
+
+The API is **stateful**: the backend persists project data in a server-side database (see [Section 3. Storage technology](#storage-technology)). Projects are stored, maintained and retrieved through the backend, so the frontend doesn't need to keep local copies or send the full project state in every request. Instead, every operation targets a project by its `{projectId}` path parameter, which the backend resolves against its store.
+
+The backend is the single source of truth for persisted project state: the frontend loads a project from the backend, edits it through the API, and relies on the backend to persist every change. Mutating endpoints return the **updated project JSON** (wrapped in the `{ "project": ... }` envelope) loaded from storage after the change, so the client can refresh its in-memory copy.
+
+## Undo / redo history
+
+The backend also maintains a **per-project undo/redo history**. Every mutating operation pushes the previous project state onto an undo stack, so the frontend can undo and redo changes through dedicated endpoints without keeping any snapshots client-side. The history is scoped to each project and capped to a configurable maximum number of entries. The undo/redo stacks are persisted alongside the project in the backend store, so they survive server restarts; deleting a project also deletes its history. See Section 12 of the [API spec](api-specification.md) for the dedicated endpoints.
+
+## Exhaustiveness
 
 This specification is intentionally exhaustive: every entity persisted in the project JSON document (`project`, `tasks`, `task`, `depend`, `allocations`, `resource`, `role`, `calendar`, `exceptions`, `view`, `task-display-columns`) is exposed through a dedicated endpoint.
 
 ---
 
-## 2. API Conventions
+## API Conventions
 
 ### Base URL
 
@@ -50,22 +44,6 @@ This specification is intentionally exhaustive: every entity persisted in the pr
 ### Authentication
 
 The API is **public**: no authentication is required for any endpoint. Any client can access every endpoint.
-
-### Request and response bodies
-
-- All request and response bodies are `application/json` unless they are binary file streams (`application/octet-stream`, `multipart/form-data`).
-- Most operation endpoints no longer require a `project` field in the request body: the backend loads the referenced project from storage using `{projectId}`. Request bodies only carry the operation parameters. Example:
-  ```json
-  { "taskId": "t1", "patch": { "name": "New name" } }
-  ```
-- Mutating endpoints return the **updated project state** (loaded from storage after the change) so the client can refresh its in-memory copy:
-  ```json
-  { "project": { ... } }
-  ```
-- Query endpoints return the requested data extracted from the stored project:
-  ```json
-  { "data": ... }
-  ```
 
 ### Identifiers
 
@@ -82,7 +60,7 @@ Binary export endpoints set `Content-Disposition: attachment; filename="<project
 
 ---
 
-## 3. Storage technology
+## Storage technology
 
 - **Database:** PostgreSQL 18.
 - **ORM / access:** Hibernate 7.
