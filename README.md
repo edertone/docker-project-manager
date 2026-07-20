@@ -28,8 +28,8 @@ The backend is **stateful**: projects are persisted server-side so they can be r
 
 Projects are stored as a single JSONB document per project in a `projects` table, keyed by the stable `{projectId}`. This keeps the project JSON schema flexible (mirroring the native document format described in the API spec) while still benefiting from ACID guarantees, indexed lookups by ID, and easy listing of the project registry.
 
-- **Storage model:** one row per project, with the full project JSON stored in a `JSONB` column; metadata columns (`id`, `name`, `manager`, `company`, `created_at`, `updated_at`) are extracted for fast listing and filtering in the project registry.
-- **Lifecycle:** the backend creates, retrieves, updates and deletes projects through the `/projects` endpoints; all other operations load the referenced project from PostgreSQL by `{projectId}`, apply the change, and persist the updated document back to the database.
+- **Storage model:** one row per project, with the full project JSON stored in a `JSONB` column; metadata columns (`id`, `name`, `manager`, `company`, `created_at`, `updated_at`) are extracted for fast listing and filtering in the project registry. A separate `project_history` table stores the per-project **undo/redo stacks** so the backend can revert and reapply changes without any client-side snapshots.
+- **Lifecycle:** the backend creates, retrieves, updates and deletes projects through the `/projects` endpoints; all other operations load the referenced project from PostgreSQL by `{projectId}`, apply the change, and persist the updated document back to the database. Every mutating operation also pushes the previous project state onto the project's undo stack (capped to a configurable maximum), enabling the dedicated `:undo`, `:redo` and `/history` endpoints (see Section 13 of the API spec).
 
 ## REST API Specification
 

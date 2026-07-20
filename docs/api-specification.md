@@ -8,6 +8,8 @@ The API is **stateful**: the backend persists project data in a server-side data
 
 The application is intended for a **single user** working on one project at a time. No multiple users and no concurrency are expected, but the backend keeps a **server-side project registry** so that projects survive across sessions and can be reopened later by the frontend. The backend is the single source of truth for persisted project state: the frontend loads a project from the backend, edits it through the API, and relies on the backend to persist every change.
 
+The backend also maintains a **per-project undo/redo history**. Every mutating operation pushes the previous project state onto an undo stack, so the frontend can undo and redo changes through dedicated endpoints without keeping any snapshots client-side. The history is scoped to each project and capped to a configurable maximum number of entries.
+
 The API is designed around the following core feature set:
 
 - **Projects** — JSON documents with metadata, calendars and view configuration, persisted server-side and addressable by ID.
@@ -45,7 +47,7 @@ The API is designed around the following core feature set:
 - All identifiers are strings (stable UIDs are used for tasks/resources). `{projectId}` is a stable server-side identifier assigned at project creation.
 - Dates are ISO-8601 (`YYYY-MM-DD`), date-times include offset.
 - Standard HTTP status codes: `200`, `201`, `204`, `400`, `404`, `409`, `422`, `500`.
-- Because projects are persisted server-side, the backend supports listing, reopening and deleting previously saved projects. Undo/redo and change history are still handled client-side by keeping previous project snapshots; no server-side history is provided.
+- Because projects are persisted server-side, the backend supports listing, reopening and deleting previously saved projects. Undo/redo and change history are also managed by the backend (see Section 13): every mutating operation pushes the previous project state onto a per-project undo stack, and the frontend can undo/redo through dedicated endpoints without keeping snapshots client-side.
 - **Path parameters** (`{projectId}`, `{taskId}`, `{resourceId}`, `{dependencyId}`, `{viewId}`, `{attachmentId}`, …) are **server-side identifiers**. `{projectId}` selects the persisted project in the backend store; `{taskId}`, `{resourceId}`, etc. identify entities **within that stored project** and are resolved by the backend against the loaded project.
 - **Attachments** are stored as **references inside the project JSON** (local file paths or URLs), never as server-held bytes. The backend persists the references as part of the project document but does not store uploaded attachment bytes; attachment endpoints only update the references in the stored project.
 
@@ -65,6 +67,10 @@ Builds, persists, retrieves and inspects project JSON documents. Projects are st
 | POST | `/projects/{projectId}:validate` | — | `ValidationReport` (200) | Validates the stored project and returns errors/warnings. |
 | POST | `/projects/{projectId}:summary` | — | `ProjectSummary` (200) | Returns aggregated stats for the stored project: task count, milestones, completion %, total cost, critical path duration. |
 | POST | `/projects/{projectId}:clone` | `{ "name": string }` | `{ "project": Project }` (201) | Creates a deep copy of the stored project with a new name and regenerated IDs, persists it as a new project, and returns it. |
+| POST | `/projects/{projectId}:undo` | — | `{ "project": Project }` (200) | Reverts the stored project to its previous state in the undo history, pushes the reverted state onto the redo stack, and returns the resulting project. Returns `409` if there is nothing to undo. |
+| POST | `/projects/{projectId}:redo` | — | `{ "project": Project }` (200) | Reapplies the next entry from the redo history, pushes the replaced state back onto the undo stack, and returns the resulting project. Returns `409` if there is nothing to redo. |
+| GET | `/projects/{projectId}/history` | — | `HistoryReport` (200) | Returns the current undo/redo history state for the project: number of available undo and redo entries, the history cap, and an optional ordered list of history entries (timestamps and operation labels). |
+| POST | `/projects/{projectId}/history:clear` | `{ "keep": "none\|current" }` | `204` | Clears the undo and redo stacks for the project. With `keep=none` both stacks are emptied; with `keep=current` (default) the current state is preserved as the only undo entry. |
 
 ### `Project` schema
 ```json
@@ -404,9 +410,43 @@ Endpoints to convert between the native JSON project format, Microsoft Project, 
 
 ---
 
+## 13. Undo / Redo
+
+The backend maintains a per-project undo/redo history so the frontend can revert or reapply changes without storing any snapshots client-side.
+
+- Every **mutating endpoint** (any operation that changes the stored project, including task/resource/dependency/assignment/calendar/custom-column/view/cost mutations, project metadata updates, imports and clones) automatically pushes the **previous** project state onto the project's **undo stack** before persisting the new state, and clears the **redo stack**.
+- `:undo` pops the top of the undo stack, restores it as the current project state, and pushes the replaced state onto the redo stack.
+- `:redo` pops the top of the redo stack, restores it as the current project state, and pushes the replaced state back onto the undo stack.
+- History is **scoped per project** and **capped** to a configurable maximum number of entries (oldest entries are dropped when the cap is exceeded). The cap is reported by `/projects/{projectId}/history`.
+- History is **not versioned across sessions by default**: the undo/redo stacks are persisted alongside the project in the backend store, so they survive server restarts, but deleting a project also deletes its history.
+- Query endpoints (e.g. `:get`, `:query`, `:list`, `:summary`, `:validate`, `cost:get`, `load`, `working-days`, `activities`, `critical-path`) do **not** record history.
+- `:undo`, `:redo` and `history:clear` themselves do **not** push onto the undo stack; `:undo`/`:redo` only move entries between the undo and redo stacks.
+
+| Method | Endpoint | Body | Returns | Functional description |
+|---|---|---|---|---|
+| POST | `/projects/{projectId}:undo` | — | `{ "project": Project }` (200) | Reverts the stored project to its previous state in the undo history, pushes the reverted state onto the redo stack, and returns the resulting project. `409` if there is nothing to undo. |
+| POST | `/projects/{projectId}:redo` | — | `{ "project": Project }` (200) | Reapplies the next entry from the redo history, pushes the replaced state back onto the undo stack, and returns the resulting project. `409` if there is nothing to redo. |
+| GET | `/projects/{projectId}/history` | — | `HistoryReport` (200) | Returns the current undo/redo history state for the project. |
+| POST | `/projects/{projectId}/history:clear` | `{ "keep": "none\|current" }` | `204` | Clears the undo and redo stacks for the project. |
+
+### `HistoryReport` schema
+```json
+{
+  "undoCount": 0,
+  "redoCount": 0,
+  "maxEntries": 50,
+  "entries": [
+    { "id": "string", "operation": "tasks:create", "timestamp": "2026-07-20T10:00:00Z" }
+  ]
+}
+```
+`entries` is optional and lists the undo stack from newest to oldest when requested; `operation` is a stable label identifying the endpoint that produced the change (e.g. `tasks:create`, `tasks:update`, `resources:delete`, `calendar:update`, `projects:import`).
+
+---
+
 ## 12. System & Health
 
-Operational endpoints. These are the only endpoints that do not require a project in the body. They use `GET` because they return static, server-side metadata (backend version, supported formats, locale list, default templates) that does not depend on any project state. All other endpoints use `POST` because they carry a project in the body.
+Operational endpoints. These are the only endpoints that do not require a project in the body. They use `GET` because they return static, server-side metadata (backend version, supported formats, locale list, default templates) that does not depend on any project state. All other endpoints use `POST` because they target a persisted project by `{projectId}`.
 
 | Method | Endpoint | Body | Returns | Functional description |
 |---|---|---|---|---|
@@ -440,7 +480,7 @@ Operational endpoints. These are the only endpoints that do not require a projec
 - The backend is **stateful** and persists projects in a server-side database (see the root `README.md` for the chosen storage technology). It stores the project registry and every project document; the frontend retrieves projects by ID and relies on the backend to persist changes.
 - The application targets a **single user** editing one project at a time. No concurrency control or multi-user coordination is provided, but a server-side project registry allows projects to be listed, reopened and deleted across sessions.
 - Mutating endpoints return the **updated project JSON** (wrapped in the `{ "project": ... }` envelope) loaded from storage after the change, so the client can refresh its in-memory copy. The backend is the single source of truth for persisted state.
-- Undo/redo and change history are handled **client-side** by keeping previous project snapshots; no server endpoints are provided for them.
+- Undo/redo and change history are managed **server-side** by the backend (see Section 13). Every mutating endpoint pushes the previous project state onto a per-project undo stack; the frontend can undo and redo through dedicated endpoints without keeping snapshots client-side. History is capped per project and persisted alongside the project.
 - There is no pagination, no collaboration feed, no team management and no sharing on the backend.
 - Path parameters (`{projectId}`, `{taskId}`, `{resourceId}`, …) are **server-side identifiers**; `{projectId}` selects the persisted project in the backend store, and the other IDs identify entities within that stored project.
 - Attachments are stored as **references** (local file paths or URLs) inside the project JSON; the backend persists the references as part of the project document but never holds attachment bytes.
