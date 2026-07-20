@@ -18,27 +18,26 @@ The application is intended for a **single user** working on one project at a ti
 
 ### Undo / redo history
 
-The backend also maintains a **per-project undo/redo history**. Every mutating operation pushes the previous project state onto an undo stack, so the frontend can undo and redo changes through dedicated endpoints without keeping any snapshots client-side. The history is scoped to each project and capped to a configurable maximum number of entries. The undo/redo stacks are persisted alongside the project in the backend store, so they survive server restarts; deleting a project also deletes its history. See Section 13 of the [API spec](api-specification.md) for the dedicated endpoints.
+The backend also maintains a **per-project undo/redo history**. Every mutating operation pushes the previous project state onto an undo stack, so the frontend can undo and redo changes through dedicated endpoints without keeping any snapshots client-side. The history is scoped to each project and capped to a configurable maximum number of entries. The undo/redo stacks are persisted alongside the project in the backend store, so they survive server restarts; deleting a project also deletes its history. See Section 12 of the [API spec](api-specification.md) for the dedicated endpoints.
 
 ### Core feature set
 
 The API is designed around the following core feature set:
 
 - **Projects** — JSON documents with metadata, calendars and view configuration, persisted server-side and addressable by UUID.
-- **Tasks** — hierarchical WBS (outline numbers), milestones, project tasks, priorities, colors, notes, web links, costs, custom columns, third-date constraints, completion %, critical path.
+- **Tasks** — hierarchical WBS (outline numbers), milestones, project tasks, priorities, colors, notes, web links, costs, third-date constraints, completion %, critical path.
 - **Task dependencies** — FS / FF / SS / SF constraints, lag (difference), hardness (strong / rubber).
-- **Resources** — human resources with roles, days off, custom columns, standard rate / cost.
+- **Resources** — human resources with roles, days off, standard rate / cost.
 - **Resource assignments** — load per assignment, coordinator flag, role-in-task.
 - **Calendars** — project calendar, resource calendars, exceptions (holidays), working day definitions.
 - **Costs** — manual or calculated task costs aggregated from assignments.
-- **Custom columns** — typed custom properties (text, integer, double, date, boolean) for tasks and resources.
 - **Roles** — configurable role lists used by resources and assignments.
-- **Import / Export** — native JSON, Microsoft Project (MPP / MPX), CSV (tasks / resources / assignments), Excel, PDF, PNG, HTML reports.
+- **Import / Export** — native JSON, CSV (tasks / resources / assignments), Excel, PDF, PNG, HTML reports.
 - **Views / UI state** — visible columns, column order/width, chart zoom, filters, sorting, expanded tasks.
 
 ### Exhaustiveness
 
-This specification is intentionally exhaustive: every entity persisted in the project JSON document (`project`, `tasks`, `task`, `depend`, `allocations`, `resource`, `role`, `calendar`, `exceptions`, `custom-columns`, `view`, `task-display-columns`) is exposed through a dedicated endpoint.
+This specification is intentionally exhaustive: every entity persisted in the project JSON document (`project`, `tasks`, `task`, `depend`, `allocations`, `resource`, `role`, `calendar`, `exceptions`, `view`, `task-display-columns`) is exposed through a dedicated endpoint.
 
 ---
 
@@ -70,8 +69,8 @@ The API is **public**: no authentication is required for any endpoint. Any clien
 
 ### Identifiers
 
-- All identifiers are strings (stable UIDs are used for tasks/resources). `{projectId}` is a stable server-side identifier assigned at project creation.
-- **Path parameters** (`{projectId}`, `{taskId}`, `{resourceId}`, `{dependencyId}`, `{viewId}`, …) are **server-side identifiers**. `{projectId}` selects the persisted project in the backend store; `{taskId}`, `{resourceId}`, etc. identify entities **within that stored project** and are resolved by the backend against the loaded project.
+- All identifiers are UUIDs. `{projectId}` is a UUID assigned at project creation.
+- **Path parameters** (`{projectId}`, `{taskId}`, `{resourceId}`, `{dependencyId}`, `{viewId}`, …) are **UUIDs**. `{projectId}` selects the persisted project in the backend store; `{taskId}`, `{resourceId}`, etc. identify entities **within that stored project** and are resolved by the backend against the loaded project.
 
 ### Dates
 
@@ -104,5 +103,5 @@ The backend is the single source of truth for persisted project state:
 
 - The backend creates, retrieves, updates and deletes projects through the `/projects` endpoints.
 - All other operations load the referenced project from PostgreSQL by `{projectId}`, apply the change, and persist the updated document back to the database.
-- Every mutating operation also pushes the **previous** project state onto the project's undo stack (capped to a configurable maximum), enabling the dedicated `:undo`, `:redo` and `/history` endpoints (see Section 13 of the [API spec](api-specification.md)).
+- Every mutating operation also pushes the **previous** project state onto the project's undo stack (capped to a configurable maximum), enabling the dedicated `:undo`, `:redo` and `/history` endpoints (see Section 12 of the [API spec](api-specification.md)).
 - The undo/redo stacks are persisted alongside the project in the backend store, so they survive server restarts. Deleting a project also deletes its history.

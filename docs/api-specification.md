@@ -19,7 +19,7 @@ Builds, persists, retrieves and inspects project JSON documents. Projects are st
 | DELETE | `/projects/{projectId}` | — | `204` | Deletes the stored project, all its contents, and its undo/redo history. |
 | GET | `/projects/{projectId}/validation` | — | `{ "data": ValidationReport }` (200) | Validates the stored project and returns errors/warnings. Read-only; does not affect undo/redo history. |
 | GET | `/projects/{projectId}/summary` | — | `{ "data": ProjectSummary }` (200) | Returns aggregated stats: task count, milestones, completion %, total cost, critical path duration. |
-| POST | `/projects/{projectId}:clone` | `{ "name": string }` | `{ "project": Project }` (201) | Creates a deep copy of the project with a new name. All entity IDs (tasks, resources, dependencies, assignments, roles, views, custom columns) are regenerated and internal references are remapped consistently. Persists it as a new project. |
+| POST | `/projects/{projectId}:clone` | `{ "name": string }` | `{ "project": Project }` (201) | Creates a deep copy of the project with a new name. All entity IDs (tasks, resources, dependencies, assignments, roles, views) are regenerated and internal references are remapped consistently. Persists it as a new project. |
 
 ### `Project` schema
 ```json
@@ -71,14 +71,14 @@ Builds, persists, retrieves and inspects project JSON documents. Projects are st
 
 ## 2. Tasks
 
-Manages the task tree (WBS). Tasks support nesting (supertask / subtasks), milestones, project tasks, priorities, colors, notes, web links, third-date constraints, completion %, custom columns and a critical-path flag. All endpoints target a persisted project by `{projectId}`.
+Manages the task tree (WBS). Tasks support nesting (supertask / subtasks), milestones, project tasks, priorities, colors, notes, web links, third-date constraints, completion % and a critical-path flag. All endpoints target a persisted project by `{projectId}`.
 
 | Method | Endpoint | Body | Returns | Functional description |
 |---|---|---|---|---|
 | GET | `/projects/{projectId}/tasks` | Query: `parentId`, `milestone` (bool), `critical` (bool), `expand` (bool, include full subtree) — all optional | `{ "data": Task[] }` (200) | Returns the task tree (or a filtered subtree) extracted from the stored project. |
 | GET | `/projects/{projectId}/tasks/{taskId}` | — | `{ "data": Task }` (200) | Returns a single task with all attributes. |
 | POST | `/projects/{projectId}/tasks` | `{ "task": TaskCreate }` | `{ "project": Project }` (201) | Creates a task. If `parentId` is set, nests it under that parent. |
-| PATCH | `/projects/{projectId}/tasks/{taskId}` | `{ "patch": TaskUpdate }` | `{ "project": Project }` (200) | Updates any subset of task attributes (name, dates, duration, priority, color, notes, webLink, completion, milestone, projectTask, expand, thirdDate). `resourceIds`, `predecessorIds` and `cost` are read-only here — see Sections 3, 5 and 9. |
+| PATCH | `/projects/{projectId}/tasks/{taskId}` | `{ "patch": TaskUpdate }` | `{ "project": Project }` (200) | Updates any subset of task attributes (name, dates, duration, priority, color, notes, webLink, completion, milestone, projectTask, expand, thirdDate). `resourceIds`, `predecessorIds` and `cost` are read-only here — see Sections 3, 5 and 8. |
 | DELETE | `/projects/{projectId}/tasks/{taskId}` | Query: `cascade` (bool, default `false`) | `{ "project": Project }` (200) | Deletes a task. With `cascade=true`, all descendants — and any dependencies/assignments referencing the task or its descendants — are removed. With `cascade=false` (default), children are reparented to the deleted task's parent; dependencies and assignments belonging to the deleted task are removed. |
 | POST | `/projects/{projectId}/tasks/{taskId}:move` | `{ "parentId": string\|null, "position": int }` | `{ "project": Project }` (200) | Moves a task under a new parent and/or to a specific position in the outline. |
 | POST | `/projects/{projectId}/tasks/{taskId}:indent` | `{ "direction": "in\|out" }` | `{ "project": Project }` (200) | Indents or outdents a task in the WBS hierarchy. |
@@ -92,7 +92,6 @@ Manages the task tree (WBS). Tasks support nesting (supertask / subtasks), miles
 ```json
 {
   "id": "string",
-  "uid": "string|null",
   "name": "string",
   "parentId": "string|null",
   "outlineNumber": "1.2.3",
@@ -116,9 +115,9 @@ Manages the task tree (WBS). Tasks support nesting (supertask / subtasks), miles
   "notes": "string"
 }
 ```
-- `id` is the stable server-side identifier used throughout the API. `uid` is populated only for tasks imported from, or destined for, Microsoft Project (MPP/MPX) round-tripping, to preserve the original file's identifier; it is `null` for natively created tasks.
+- `id` is the stable server-side UUID used throughout the API.
 - `predecessorIds` and `resourceIds` are **derived, read-only** convenience fields, computed from the Dependencies (Section 3) and Assignments (Section 5) collections. They're included here so a client can render a Gantt row without extra calls, but changing them requires the Dependency/Assignment endpoints.
-- `thirdDate` / `thirdDateConstraint` model one additional constraint date beyond the task's own start/end (e.g. "must not start before X" while otherwise unconstrained), equivalent to a third-date/SNET-style constraint in tools like ProjectLibre or MS Project. `thirdDateConstraint: "NONE"` means the constraint is inactive and `thirdDate` is ignored.
+- `thirdDate` / `thirdDateConstraint` model one additional constraint date beyond the task's own start/end (e.g. "must not start before X" while otherwise unconstrained). `thirdDateConstraint: "NONE"` means the constraint is inactive and `thirdDate` is ignored.
 
 `priority` enum: `TaskPriority`. `durationUnit` enum: `TimeUnit`.
 
@@ -153,7 +152,7 @@ Manages relationships between tasks (predecessors / successors). The application
 
 ## 4. Resources
 
-Manages human resources. Each resource has a name, role, default rate, days off and custom columns. All endpoints target a persisted project by `{projectId}`.
+Manages human resources. Each resource has a name, role, default rate and days off. All endpoints target a persisted project by `{projectId}`.
 
 | Method | Endpoint | Body | Returns | Functional description |
 |---|---|---|---|---|
@@ -287,41 +286,7 @@ Manages the project calendar and per-resource calendars, including working days,
 
 ---
 
-## 8. Custom Columns
-
-Manages typed custom properties for tasks and resources (text, integer, double, date, boolean). All endpoints target a persisted project by `{projectId}`.
-
-| Method | Endpoint | Body | Returns | Functional description |
-|---|---|---|---|---|
-| GET | `/projects/{projectId}/custom-columns` | Query: `scope` (`task`\|`resource`) — optional | `{ "data": CustomColumnDef[] }` (200) | Lists custom column definitions. |
-| POST | `/projects/{projectId}/custom-columns` | `{ "column": CustomColumnDefCreate }` | `{ "project": Project }` (201) | Creates a custom column. |
-| PATCH | `/projects/{projectId}/custom-columns/{columnId}` | `{ "patch": CustomColumnDefUpdate }` | `{ "project": Project }` (200) | Updates name, type or default value. |
-| DELETE | `/projects/{projectId}/custom-columns/{columnId}` | — | `{ "project": Project }` (200) | Deletes a custom column and all its values. |
-| GET | `/projects/{projectId}/tasks/{taskId}/custom-values` | — | `{ "data": CustomValue[] }` (200) | Returns custom column values for a task. |
-| PATCH | `/projects/{projectId}/tasks/{taskId}/custom-values` | `{ "values": CustomValue[] }` | `{ "project": Project }` (200) | Bulk-updates custom values for a task. |
-| GET | `/projects/{projectId}/resources/{resourceId}/custom-values` | — | `{ "data": CustomValue[] }` (200) | Returns custom column values for a resource. |
-| PATCH | `/projects/{projectId}/resources/{resourceId}/custom-values` | `{ "values": CustomValue[] }` | `{ "project": Project }` (200) | Bulk-updates custom values for a resource. |
-
-### `CustomColumnDef` schema
-```json
-{
-  "id": "string",
-  "name": "string",
-  "scope": "TASK",
-  "type": "TEXT",
-  "defaultValue": "any"
-}
-```
-`scope` enum: `CustomColumnScope`. `type` enum: `CustomPropertyType`.
-
-### `CustomValue` schema
-```json
-{ "columnId": "string", "value": "any" }
-```
-
----
-
-## 9. Costs
+## 8. Costs
 
 Manages task and project cost calculation. A task cost can be manual or calculated from resource assignments (load × rate × duration). All endpoints target a persisted project by `{projectId}`.
 
@@ -360,7 +325,7 @@ If `currency` is omitted when setting a cost, the project's `defaultCurrency` is
 
 ---
 
-## 10. Views & UI State
+## 9. Views & UI State
 
 Persists the user-interface configuration of the application: visible columns, column order/width, chart zoom, filters, sorting and expanded tasks. Mirrors the `view` and `task-display-columns` sections of the native project JSON file. All endpoints target a persisted project by `{projectId}`.
 
@@ -411,14 +376,14 @@ Persists the user-interface configuration of the application: visible columns, c
 
 ---
 
-## 11. Import / Export
+## 10. Import / Export
 
-Endpoints to convert between the native JSON project format, Microsoft Project, CSV, Excel, PDF, PNG and HTML reports. Import parses an uploaded file and persists the resulting project; export/report endpoints read the stored project by `{projectId}` and return a binary stream.
+Endpoints to convert between the native JSON project format, CSV, Excel, PDF, PNG and HTML reports. Import parses an uploaded file and persists the resulting project; export/report endpoints read the stored project by `{projectId}` and return a binary stream.
 
 | Method | Endpoint | Body | Returns | Functional description |
 |---|---|---|---|---|
-| POST | `/projects:import` | `multipart/form-data` (`file`, `format=json\|msproject\|csv-tasks\|csv-resources\|csv-assignments\|excel`, `mergeProjectId` optional) | `{ "report": ImportReport, "project": Project }` (201) | Parses an uploaded file and persists the resulting project. If `mergeProjectId` is given, merges it into that project instead: all imported IDs are regenerated to avoid collisions, and any references the importer could not resolve are listed in `ImportReport.warnings`. |
-| GET | `/projects/{projectId}/export` | Query: `format` (required, `json\|msproject\|csv-tasks\|csv-resources\|csv-assignments\|excel\|pdf\|png\|html`), `viewId`, `locale` — optional | binary stream (200) | Exports the stored project (or a specific view) in the requested format. Sets `Content-Disposition: attachment; filename="<project>.<ext>"`. |
+| POST | `/projects:import` | `multipart/form-data` (`file`, `format=json\|csv-tasks\|csv-resources\|csv-assignments\|excel`, `mergeProjectId` optional) | `{ "report": ImportReport, "project": Project }` (201) | Parses an uploaded file and persists the resulting project. If `mergeProjectId` is given, merges it into that project instead: all imported IDs are regenerated to avoid collisions, and any references the importer could not resolve are listed in `ImportReport.warnings`. |
+| GET | `/projects/{projectId}/export` | Query: `format` (required, `json\|csv-tasks\|csv-resources\|csv-assignments\|excel\|pdf\|png\|html`), `viewId`, `locale` — optional | binary stream (200) | Exports the stored project (or a specific view) in the requested format. Sets `Content-Disposition: attachment; filename="<project>.<ext>"`. |
 | GET | `/projects/{projectId}/reports/gantt` | Query: `viewId`, `locale`, `paper` (`A4\|A3\|Letter`), `orientation` (`portrait\|landscape`) — all optional | `application/pdf` (200) | Generates a printable Gantt chart PDF from the stored project. |
 | GET | `/projects/{projectId}/reports/resources` | Query: `locale`, `paper` — optional | `application/pdf` (200) | Generates a resource load report PDF from the stored project. |
 | GET | `/projects/{projectId}/reports/wbs` | Query: `locale` — optional | `application/pdf` (200) | Generates a WBS / task list report PDF from the stored project. |
@@ -436,11 +401,11 @@ Endpoints to convert between the native JSON project format, Microsoft Project, 
 
 ---
 
-## 12. Undo / Redo
+## 11. Undo / Redo
 
 The backend maintains a per-project undo/redo history so the frontend can revert or reapply changes without storing any snapshots client-side.
 
-- Every **mutating endpoint** (any `POST` create/action, `PATCH`, or `DELETE` that changes the stored project — including task/resource/dependency/assignment/calendar/custom-column/view/cost mutations, project metadata updates, imports and clones) automatically pushes the **previous** project state onto the project's **undo stack** before persisting the new state, and clears the **redo stack**.
+- Every **mutating endpoint** (any `POST` create/action, `PATCH`, or `DELETE` that changes the stored project — including task/resource/dependency/assignment/calendar/view/cost mutations, project metadata updates, imports and clones) automatically pushes the **previous** project state onto the project's **undo stack** before persisting the new state, and clears the **redo stack**.
 - `:undo` pops the top of the undo stack, restores it as the current project state, and pushes the replaced state onto the redo stack.
 - `:redo` pops the top of the redo stack, restores it as the current project state, and pushes the replaced state back onto the undo stack.
 - History is **scoped per project** and **capped** to a configurable maximum number of entries (oldest entries are dropped when the cap is exceeded). The cap is reported by `GET /projects/{projectId}/history`.
@@ -470,7 +435,7 @@ The backend maintains a per-project undo/redo history so the frontend can revert
 
 ---
 
-## 13. System & Health
+## 12. System & Health
 
 Operational endpoints. These are the only endpoints that do not target a project, use plain `GET` with no path parameters, and return their payload **unwrapped** (no `data`/`project` envelope) since they're static server-side metadata (backend version, supported formats, locale list, default templates).
 
@@ -486,8 +451,8 @@ Operational endpoints. These are the only endpoints that do not target a project
 {
   "backendVersion": "1.4.0",
   "projectSchemaVersion": "3.4",
-  "importFormats": ["json", "msproject", "csv-tasks", "csv-resources", "csv-assignments", "excel"],
-  "exportFormats": ["json", "msproject", "csv-tasks", "csv-resources", "csv-assignments", "excel", "pdf", "png", "html"]
+  "importFormats": ["json", "csv-tasks", "csv-resources", "csv-assignments", "excel"],
+  "exportFormats": ["json", "csv-tasks", "csv-resources", "csv-assignments", "excel", "pdf", "png", "html"]
 }
 ```
 
@@ -518,9 +483,7 @@ Operational endpoints. These are the only endpoints that do not target a project
 | `DependencyType` | `FS` (Finish-Start), `FF` (Finish-Finish), `SS` (Start-Start), `SF` (Start-Finish) |
 | `DependencyHardness` | `STRONG`, `RUBBER` |
 | `ThirdDateConstraint` | `NONE`, `EARLIEST_BEGIN` |
-| `CustomPropertyType` | `TEXT`, `INTEGER`, `DOUBLE`, `DATE`, `BOOLEAN` |
-| `CustomColumnScope` | `TASK`, `RESOURCE` |
 | `ViewType` | `GANTT`, `RESOURCE`, `RESOURCE_CHART` |
 | `ZoomLevel` | `DAY`, `WEEK`, `MONTH`, `QUARTER`, `YEAR` |
-| `ImportFormat` | `json`, `msproject`, `csv-tasks`, `csv-resources`, `csv-assignments`, `excel` |
-| `ExportFormat` | `json`, `msproject`, `csv-tasks`, `csv-resources`, `csv-assignments`, `excel`, `pdf`, `png`, `html` |
+| `ImportFormat` | `json`, `csv-tasks`, `csv-resources`, `csv-assignments`, `excel` |
+| `ExportFormat` | `json`, `csv-tasks`, `csv-resources`, `csv-assignments`, `excel`, `pdf`, `png`, `html` |
