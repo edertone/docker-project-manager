@@ -5,7 +5,7 @@ A web application to manage projects, tasks and related resources.
 ## Index
 
 - [Folders structure](#folders-structure)
-- [Backend storage](#backend-storage)
+- [Backend architecture](#backend-architecture)
 - [REST API Specification](#rest-api-specification)
 
 ## Folders structure
@@ -22,15 +22,10 @@ docker-project-manager/
 └── e2e/                        # Tests E2E Playwright
 ```
 
-## Backend storage
+## Backend architecture
 
-The backend is **stateful**: projects are persisted server-side so they can be retrieved later by the frontend.
-
-Projects are stored as a single JSONB document per project in a `projects` table, keyed by the stable `{projectId}`. This keeps the project JSON schema flexible (mirroring the native document format described in the API spec) while still benefiting from ACID guarantees, indexed lookups by ID, and easy listing of the project registry.
-
-- **Storage model:** one row per project, with the full project JSON stored in a `JSONB` column; metadata columns (`id`, `name`, `manager`, `company`, `created_at`, `updated_at`) are extracted for fast listing and filtering in the project registry. A separate `project_history` table stores the per-project **undo/redo stacks** so the backend can revert and reapply changes without any client-side snapshots.
-- **Lifecycle:** the backend creates, retrieves, updates and deletes projects through the `/projects` endpoints; all other operations load the referenced project from PostgreSQL by `{projectId}`, apply the change, and persist the updated document back to the database. Every mutating operation also pushes the previous project state onto the project's undo stack (capped to a configurable maximum), enabling the dedicated `:undo`, `:redo` and `/history` endpoints (see Section 13 of the API spec).
+See [`docs/backend-architecture.md`](docs/backend-architecture.md) for the full architecture, conventions and storage details.
 
 ## REST API Specification
 
-See [`docs/api-specification.md`](docs/api-specification.md) for the full REST API specification.
+See [`docs/api-specification.md`](docs/api-specification.md) for endpoint definitions (tables), request/response schemas and enumerations.
